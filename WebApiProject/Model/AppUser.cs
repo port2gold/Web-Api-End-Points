@@ -10,6 +10,7 @@ namespace WebApiProject.Model
 
     /// <summary>
     /// App User extending Identity User
+    /// Adding fields to identity User
     /// </summary>
     public class AppUser: IdentityUser
     {

@@ -55,10 +55,11 @@ namespace WebApiProject
             {
                 app.UseDeveloperExceptionPage();
             }
-
+            ///Routing middleware
             app.UseRouting();
-
+            //Authorization middleware
             app.UseAuthorization();
+            //Authentication middleware
             app.UseAuthentication();
 
             PreSeeder.Seeder(ctx, roleManager, userManager).Wait();
