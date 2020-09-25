@@ -50,53 +50,75 @@ namespace WebApiProject.Controllers
         {
             var user = new AppUser { UserName = model.Username, Email = model.Email, FirstName = model.FirstName, LastName = model.LastName };
 
-            var result = await _userManager.CreateAsync(user, "DefaultPassword@11@");
-            if (result.Succeeded)
+            if (ModelState.IsValid)
             {
-                await _userManager.AddToRoleAsync(user, "user");
+                var result = await _userManager.CreateAsync(user, "DefaultPassword@11@");
+                if (result.Succeeded)
+                {
+                    await _userManager.AddToRoleAsync(user, "user");
+                }
             }
+            else
+            {
+                
+            }
+
+            
 
         }
         [AllowAnonymous]
         [HttpPost("SignIn")]
         public async Task<string> SignIn([FromBody] SignInDTO model)
         {
-
-            var user = await _userManager.FindByEmailAsync(model.Email);
-            var result = await _userManager.CheckPasswordAsync(user, model.Password);
-            //var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, true, true);
-            if (result)
+            if(ModelState.IsValid)
             {
-                var email = new EmailDTO { Email = model.Email };
-                var answer = GetToken(email);
+                var user = await _userManager.FindByEmailAsync(model.Email);
+                var result = await _userManager.CheckPasswordAsync(user, model.Password);
+                //var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, true, true);
+                if (result)
+                {
+                    var email = new EmailDTO { Email = model.Email };
+                    var answer = GetToken(email);
 
-                return answer.ToString();
+                    return answer.ToString();
+
+                }
+                return "Email or Password Incorrect";
+            }
+            else
+            {
 
             }
-            return "Username or Password Incorrect";
+
+            return "";
         }
 
         /// <summary>
         /// Fetch All Register
         /// </summary>
         /// <returns></returns>
-        [AllowAnonymous]
+        
         [HttpGet("FetchAllRegister")]
         public IActionResult FetchAllRegister()
         {
             var result = _userManager.Users;
             var users = new List<UserReturned>();
 
-            foreach (var item in result)
+            if(result != null)
             {
-                var user = new UserReturned
+                foreach (var item in result)
                 {
-                    LastName = item.LastName,
-                    FirstName = item.FirstName,
-                    Email = item.Email
-                };
-                users.Add(user);
+                    var user = new UserReturned
+                    {
+                        LastName = item.LastName,
+                        FirstName = item.FirstName,
+                        Email = item.Email
+                    };
+                    users.Add(user);
+                }
             }
+
+            
             return Ok(users.ToList());
 
         }
@@ -105,11 +127,11 @@ namespace WebApiProject.Controllers
         /// Fetch All Logged In User
         /// </summary>
         /// <returns></returns>
-        [HttpGet("FetchAllLoggeInUser")]
-        public async Task<IActionResult> FetchAllLoggeInUser()
+        [HttpGet("FetchAllLoggeInUser/{Id}")]
+        public  IActionResult FetchAllLoggeInUser(string Id)
         {
+            var user = _userManager.Users.FirstOrDefault(x => x.Id == Id);
             
-            var user = await _userManager.GetUserAsync(User);
             var result = new NewuserDTO { Email = user.Email, Username = user.UserName, FirstName = user.FirstName, LastName = user.LastName };
             return Ok(result);
         }
@@ -123,36 +145,46 @@ namespace WebApiProject.Controllers
         [HttpPost("GetToken")]
         public string GetToken([FromBody] EmailDTO model)
         {
-            var user = _userManager.Users.FirstOrDefault(x => x.Email == model.Email);
-
-            //Create claims for JWT
-            var claims = new[]
+            var tokenHandler = new JwtSecurityTokenHandler();
+            if (ModelState.IsValid)
             {
+                var user = _userManager.Users.FirstOrDefault(x => x.Email == model.Email);
+
+                //Create claims for JWT
+                var claims = new[]
+                {
                 new Claim(ClaimTypes.NameIdentifier,user.Id),
                 new Claim(ClaimTypes.Name, user.LastName)
-            };
+                };
 
-            //Get JWT secret key
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config.GetSection("AppSettings:Token").Value));
+                //Get JWT secret key
+                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config.GetSection("AppSettings:Token").Value));
 
-            //Generate Signing Credentials
-            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
+                //Generate Signing Credentials
+                var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
 
-            //Create Security Token Descriptor
-            var securityTokenDescriptor = new SecurityTokenDescriptor
+                //Create Security Token Descriptor
+                var securityTokenDescriptor = new SecurityTokenDescriptor
+                {
+                    Subject = new ClaimsIdentity(claims),
+                    Expires = DateTime.Now.AddDays(1),
+                    SigningCredentials = credentials,
+                };
+
+                //Build Token Handler
+                
+
+                //Create Token
+                var token = tokenHandler.CreateToken(securityTokenDescriptor);
+                //return Token
+                return tokenHandler.WriteToken(token);
+            }
+            else
             {
-                Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.Now.AddDays(1),
-                SigningCredentials = credentials,
-            };
-
-            //Build Token Handler
-            var tokenHandler = new JwtSecurityTokenHandler();
-
-            //Create Token
-            var token = tokenHandler.CreateToken(securityTokenDescriptor);
-            //return Token
-            return tokenHandler.WriteToken(token);
+               
+            }
+            return "";
+            
         }
     }
 } 
