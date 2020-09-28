@@ -46,8 +46,9 @@ namespace WebApiProject.Controllers
         /// <returns></returns>
         [AllowAnonymous]
         [HttpPost("SignUp")]
-        public async Task SignUp([FromBody] NewuserDTO model)
+        public async Task<IActionResult> SignUp([FromBody] NewuserDTO model)
         {
+            
             var user = new AppUser { UserName = model.Username, Email = model.Email, FirstName = model.FirstName, LastName = model.LastName };
 
             if (ModelState.IsValid)
@@ -57,14 +58,18 @@ namespace WebApiProject.Controllers
                 {
                     await _userManager.AddToRoleAsync(user, "user");
                 }
+                else
+                {
+                    return Unauthorized(ModelState);
+                }
             }
             else
             {
-                
+                return BadRequest(ModelState);
             }
 
-            
 
+            return null;
         }
         [AllowAnonymous]
         [HttpPost("SignIn")]
@@ -72,10 +77,10 @@ namespace WebApiProject.Controllers
         {
             if(ModelState.IsValid)
             {
-                var user = await _userManager.FindByEmailAsync(model.Email);
-                var result = await _userManager.CheckPasswordAsync(user, model.Password);
-                //var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, true, true);
-                if (result)
+                //var user = await _userManager.FindByEmailAsync(model.Email);
+                //var result = await _userManager.CheckPasswordAsync(user, model.Password);
+                var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, true, true);
+                if (result.Succeeded)
                 {
                     var email = new EmailDTO { Email = model.Email };
                     var answer = GetToken(email);
